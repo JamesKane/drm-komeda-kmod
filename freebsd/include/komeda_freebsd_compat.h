@@ -68,6 +68,11 @@ vm_flags_mod(struct vm_area_struct *vma, unsigned long set,
 	.runtime_idle = (idle_fn),
 #endif
 
+/* CIX Sky1's reset lines (drivers/reset/reset-sky1.c). */
+int		sky1_fbsd_reset_signal(unsigned long id, unsigned int *offset,
+		    unsigned int *bit);
+unsigned int	sky1_fbsd_reset_delay_us(void);
+
 /* Mapped through devres, which unmaps as the device goes. */
 #define	devm_iounmap(dev, addr)		((void)(dev), (void)(addr))
 

@@ -6,15 +6,17 @@
  * Author: Jerry Zhu <jerry.zhu@cixtech.com>
  */
 
-#include <linux/acpi.h>
 #include <linux/delay.h>
-#include <linux/mfd/syscon.h>
 #include <linux/module.h>
+#ifdef __linux__
+#include <linux/acpi.h>
+#include <linux/mfd/syscon.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/property.h>
 #include <linux/reset-controller.h>
 #include <linux/regmap.h>
+#endif
 #include <dt-bindings/reset/sky1-reset.h>
 #include <dt-bindings/reset/sky1-reset-fch.h>
 
@@ -24,6 +26,7 @@ struct sky1_src_signal {
 	unsigned int offset, bit;
 };
 
+#ifdef __linux__
 struct sky1_src_variant {
 	const struct sky1_src_signal *signals;
 	unsigned int signals_num;
@@ -35,6 +38,7 @@ struct sky1_src {
 	struct regmap *regmap;
 	const struct sky1_src_signal *signals;
 };
+#endif
 
 enum sky1_src_registers {
 	CSU_PM_RESET				= 0x304,
@@ -252,6 +256,33 @@ static const struct sky1_src_signal sky1_src_fch_signals[SKY1_FCH_RESET_NUM] = {
 	[SW_XSPI_SYS_RST_N]	= { FCH_SW_XSPI, BIT(1) },
 };
 
+#ifdef __FreeBSD__
+/*
+ * FreeBSD has no reset framework: its glue resets through the RST0 block
+ * itself, from this table.  A reset line, ACPI RSTL's index into it, is
+ * active low: its bit in its register is clear while asserted.
+ */
+int
+sky1_fbsd_reset_signal(unsigned long id, unsigned int *offset,
+    unsigned int *bit)
+{
+	if (id >= ARRAY_SIZE(sky1_src_signals) ||
+	    sky1_src_signals[id].bit == 0)
+		return (-EINVAL);
+	*offset = sky1_src_signals[id].offset;
+	*bit = sky1_src_signals[id].bit;
+	return (0);
+}
+
+/* How long to wait after asserting and after deasserting a reset. */
+unsigned int
+sky1_fbsd_reset_delay_us(void)
+{
+	return (SKY1_RESET_SLEEP_MIN_US);
+}
+#endif
+
+#ifdef __linux__
 static struct sky1_src *to_sky1_src(struct reset_controller_dev *rcdev)
 {
 	return container_of(rcdev, struct sky1_src, rcdev);
@@ -419,3 +450,4 @@ module_exit(reset_sky1_exit);
 MODULE_AUTHOR("Jerry Zhu <jerry.zhu@cixtech.com>");
 MODULE_DESCRIPTION("Cix Sky1 reset driver");
 MODULE_LICENSE("GPL v2");
+#endif /* __linux__ */

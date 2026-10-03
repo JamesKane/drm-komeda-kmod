@@ -91,6 +91,10 @@ vm_flags_mod(struct vm_area_struct *vma, unsigned long set,
 #endif
 #define	system_freezable_wq	system_wq	/* no suspend yet */
 
+/* fbdev ops on DMA memory: LinuxKPI's, the same for every kind. */
+#define	__FB_DEFAULT_DMAMEM_OPS_RDWR	__FB_DEFAULT_IOMEM_OPS_RDWR
+#define	__FB_DEFAULT_DMAMEM_OPS_DRAW	__FB_DEFAULT_IOMEM_OPS_DRAW
+
 /*
  * A threaded interrupt without a primary handler: Linux's default one wakes
  * the thread.  LinuxKPI calls the primary handler unconditionally (fixed in

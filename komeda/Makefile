@@ -36,7 +36,8 @@ SRCS+=	komeda_color_mgmt.c \
 	d71_dev.c
 
 # What drm-kmod (Linux v6.13) does not build.
-SRCS+=	drm_fb_dma_helper.c \
+SRCS+=	drm_fbdev_dma.c \
+	drm_fb_dma_helper.c \
 	drm_gem_dma_helper.c \
 	drm_simple_kms_helper.c
 

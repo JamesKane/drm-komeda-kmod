@@ -3477,6 +3477,9 @@ int trilin_dp_probe(struct trilin_dpsub *dpsub, struct drm_device *drm)
 	ret = dptx_register_audio_device(dp);
 	if (ret)
 		DP_INFO("Failed to register dptx audio device\n");
+#ifdef __FreeBSD__
+	ret = 0;	/* no ALSA: video without audio */
+#endif
 
 	DP_INFO("end\n");
 	return ret;

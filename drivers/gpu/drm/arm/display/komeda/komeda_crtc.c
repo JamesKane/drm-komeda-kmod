@@ -656,8 +656,12 @@ static int komeda_crtc_add(struct komeda_kms_dev *kms,
 	 */
 	if (pipe->of_output_links[0] && sky1_dp_fbsd_have_dptx()) {
 		err = sky1_dp_fbsd_dptx_bind(base, drm_crtc_mask(crtc));
-		if (err)
+		if (err) {
+			if (err != -EPROBE_DEFER)
+				DRM_ERROR("binding the DP transmitter: %d\n",
+					  err);
 			return err;
+		}
 		goto encoder_done;
 	}
 #endif

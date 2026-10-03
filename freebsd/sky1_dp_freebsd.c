@@ -541,13 +541,25 @@ sky1_dp_fbsd_dptx_bind(struct drm_device *drm, uint32_t possible_crtcs)
 		return (-ENODEV);
 	if (d->dpsub != NULL)
 		return (-EBUSY);
+	/*
+	 * Its PHY first: the PHY driver may register after komeda's, and
+	 * probing it again (as LinuxKPI does when a driver registers) then
+	 * binds the transmitter.
+	 */
+	if (d->info.dp_phy_dev != NULL &&
+	    sky1_dp_fbsd_phy_find(d->info.dp_phy_dev,
+	    d->info.dp_phy_child) == NULL)
+		return (-EPROBE_DEFER);
 	dpsub = devm_kzalloc(&d->pdev->dev, sizeof(*dpsub), GFP_KERNEL);
 	if (dpsub == NULL)
 		return (-ENOMEM);
 	dpsub->dev = &d->pdev->dev;
-	if ((error = trilin_dp_probe(dpsub, drm)) != 0)
+	if ((error = trilin_dp_probe(dpsub, drm)) != 0) {
+		dev_err(dpsub->dev, "probe failed: %d\n", error);
 		return (error);
+	}
 	if ((error = trilin_dp_drm_init(dpsub)) != 0) {
+		dev_err(dpsub->dev, "DRM init failed: %d\n", error);
 		trilin_dp_remove(dpsub);
 		return (error);
 	}

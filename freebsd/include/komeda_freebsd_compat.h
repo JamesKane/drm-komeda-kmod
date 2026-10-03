@@ -90,6 +90,22 @@ vm_flags_mod(struct vm_area_struct *vma, unsigned long set,
 #define	IRQF_ONESHOT		0x00002000	/* threaded handlers only */
 #endif
 #define	system_freezable_wq	system_wq	/* no suspend yet */
+
+/*
+ * A threaded interrupt without a primary handler: Linux's default one wakes
+ * the thread.  LinuxKPI calls the primary handler unconditionally (fixed in
+ * freebsd-src, but not in kernels built before).
+ */
+static inline irqreturn_t
+komeda_fbsd_irq_wake_thread(int irq __unused, void *arg __unused)
+{
+	return (IRQ_WAKE_THREAD);
+}
+#define	devm_request_threaded_irq(dev, irq, handler, thread, flags, name, \
+	    arg)							\
+	lkpi_request_irq(dev, irq,					\
+	    (handler) != NULL ? (handler) : komeda_fbsd_irq_wake_thread,	\
+	    thread, flags, name, arg)
 #define	wake_up_interruptible_poll(wq, mask)	wake_up_interruptible(wq)
 #define	_IOC_SIZE(cmd)		IOCPARM_LEN(cmd)
 #define	_IOC_NR(cmd)		((cmd) & 0xff)

@@ -108,7 +108,9 @@ static const struct of_device_id komeda_of_match[] = {
 	{},
 };
 
+#ifdef __linux__
 MODULE_DEVICE_TABLE(of, komeda_of_match);
+#endif
 
 static int __maybe_unused komeda_rt_pm_suspend(struct device *dev)
 {

@@ -340,6 +340,14 @@ static int trilin_dp_connector_get_modes(struct drm_connector *connector)
 	}
 
 	if (!edid) {
+		/*
+		 * Without the sink's EDID, a converter's port tells its depth
+		 * (8 bpc for HDMI, which every HDMI sink takes) rather than
+		 * leaving it unknown, which falls back to 6 bpc.
+		 */
+		if (!info->bpc)
+			info->bpc = drm_dp_downstream_max_bpc(dp->dpcd,
+					dp->downstream_ports, NULL);
 		mode = drm_dp_downstream_mode(connector->dev, dp->dpcd,
 					      dp->downstream_ports);
 		if (mode) {

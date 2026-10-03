@@ -59,6 +59,8 @@
 
 #include <arm64/cix/sky1_scmi.h>
 
+#include "sky1_dp_freebsd_bus.h"
+
 #include "komeda_freebsd_bus.h"
 
 /* komeda's only identification function, for every compatible. */
@@ -148,7 +150,8 @@ of_device_get_match_data(const struct device *dev __unused)
  * when idle, but the clocks of a controller the firmware lit stay on until
  * there is more than the firmware's mode to go back to.  The engine clock
  * may be fixed (the _DSD's aclk_freq_fixed); komeda's choice of rate is then
- * ignored.
+ * ignored.  Other devices' clocks (the DP transmitters' and PHYs') are those
+ * their ACPI CLKT names, also always on.
  */
 
 struct clk {
@@ -161,11 +164,24 @@ static struct clk komeda_fbsd_aclk;
 static struct clk komeda_fbsd_pxclk[KOMEDA_FBSD_NPIPES];
 
 struct clk *
-devm_clk_get(struct device *dev __unused, const char *id)
+devm_clk_get(struct device *dev, const char *id)
 {
-	if (id != NULL && strcmp(id, "aclk") == 0)
-		return (&komeda_fbsd_aclk);
-	return (ERR_PTR(-ENOENT));
+	struct clk *clk;
+	uint32_t clkt_id;
+
+	if (id == NULL)
+		return (ERR_PTR(-ENOENT));
+	if (komeda_fbsd_pdev != NULL && dev == &komeda_fbsd_pdev->dev)
+		return (strcmp(id, "aclk") == 0 ? &komeda_fbsd_aclk :
+		    ERR_PTR(-ENOENT));
+	if (dev->bsddev == NULL ||
+	    sky1_fbsd_clkt_id(dev->bsddev, id, &clkt_id) != 0)
+		return (ERR_PTR(-ENOENT));
+	clk = devm_kzalloc(dev, sizeof(*clk), GFP_KERNEL);
+	if (clk == NULL)
+		return (ERR_PTR(-ENOMEM));
+	clk->id = clkt_id;
+	return (clk);
 }
 
 void
@@ -192,7 +208,7 @@ clk_prepare_enable(struct clk *clk)
 {
 	int error;
 
-	if (clk == NULL || clk->on)
+	if (IS_ERR_OR_NULL(clk) || clk->on)
 		return (0);
 	error = sky1_scmi_clk_enable(clk->id, true);
 	if (error == 0)
@@ -205,12 +221,18 @@ clk_disable_unprepare(struct clk *clk __unused)
 {
 }
 
+bool
+__clk_is_enabled(struct clk *clk)
+{
+	return (!IS_ERR_OR_NULL(clk) && clk->on);
+}
+
 unsigned long
 clk_get_rate(struct clk *clk)
 {
 	uint64_t hz;
 
-	if (clk == NULL)
+	if (IS_ERR_OR_NULL(clk))
 		return (0);
 	if (clk->fixed_hz != 0)
 		return (clk->fixed_hz);
@@ -222,7 +244,7 @@ clk_get_rate(struct clk *clk)
 long
 clk_round_rate(struct clk *clk, unsigned long rate)
 {
-	if (clk != NULL && clk->fixed_hz != 0)
+	if (!IS_ERR_OR_NULL(clk) && clk->fixed_hz != 0)
 		return (clk->fixed_hz);
 	return (rate);
 }
@@ -230,7 +252,8 @@ clk_round_rate(struct clk *clk, unsigned long rate)
 int
 clk_set_rate(struct clk *clk, unsigned long rate)
 {
-	if (clk == NULL || clk->fixed_hz != 0 || clk_get_rate(clk) == rate)
+	if (IS_ERR_OR_NULL(clk) || clk->fixed_hz != 0 ||
+	    clk_get_rate(clk) == rate)
 		return (0);
 	return (-sky1_scmi_clk_set_rate(clk->id, rate));
 }

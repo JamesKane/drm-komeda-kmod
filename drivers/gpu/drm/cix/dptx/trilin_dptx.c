@@ -3394,7 +3394,12 @@ int trilin_dp_probe(struct trilin_dpsub *dpsub, struct drm_device *drm)
 	dpsub->dp = dp;
 	//drm->dev_private = dp;
 	/* Acquire all resources (IOMEM, IRQ and PHYs). */
+#ifdef __FreeBSD__
+	/* ACPI's, by index (LinuxKPI has no ACPI companion). */
+	if (true) {
+#else
 	if (has_acpi_companion(dev)) {
+#endif
 		res_dp = platform_get_resource(pdev, IORESOURCE_MEM,
 					       DPTX_MEM_DP_IDX);
 		res_phy = platform_get_resource(pdev, IORESOURCE_MEM,

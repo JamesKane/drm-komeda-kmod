@@ -15,7 +15,11 @@ DPTXDIR=	${.CURDIR:H}/drivers/gpu/drm/cix/dptx
 
 KMOD=	komeda
 
-SRCS=	komeda_color_mgmt.c \
+# The PHY driver first: it registers (LinuxKPI's module_init(), in object
+# order) and probes its PHYs before komeda's driver binds the transmitter.
+SRCS=	phy-cix-usbdp.c
+
+SRCS+=	komeda_color_mgmt.c \
 	komeda_crtc.c \
 	komeda_dev.c \
 	komeda_drv.c \
@@ -50,11 +54,12 @@ SRCS+=	dptx_infoframe.c \
 	cix_hdcp.c \
 	cix_hdcp_ioctl.c \
 	hdcp2_tx_tmr.c \
-	phy-cix-usbdp.c \
 	reset-sky1.c
 
 SRCS+=	komeda_freebsd.c \
-	komeda_freebsd_bus.c
+	komeda_freebsd_bus.c \
+	sky1_dp_freebsd.c \
+	sky1_dp_freebsd_bus.c
 
 SRCS+=	opt_acpi.h \
 	opt_drm.h \
@@ -96,6 +101,7 @@ CFLAGS+= -include ${.CURDIR:H}/freebsd/include/komeda_freebsd_compat.h
 CFLAGS+= -DCONFIG_DRM_KOMEDA -DCONFIG_MMU
 
 CFLAGS.komeda_freebsd_bus.c+= -DKOMEDA_FBSD_BUS
+CFLAGS.sky1_dp_freebsd_bus.c+= -DKOMEDA_FBSD_BUS
 CWARNFLAGS+=	-Wno-format -Wno-gnu-pointer-arith -Wno-cast-qual
 CWARNFLAGS.reset-sky1.c+=	-Wno-unused-const-variable	# the FCH table
 # Written for a newer DRM core: connector mode_valid() takes a const mode.

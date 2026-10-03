@@ -649,6 +649,19 @@ static int komeda_crtc_add(struct komeda_kms_dev *kms,
 
 	crtc->port = pipe->of_output_port;
 
+#ifdef __FreeBSD__
+	/*
+	 * CIX's DP transmitter, if attached, makes the encoder and connector
+	 * (in place of CIX's component binding to its own display driver).
+	 */
+	if (pipe->of_output_links[0] && sky1_dp_fbsd_have_dptx()) {
+		err = sky1_dp_fbsd_dptx_bind(base, drm_crtc_mask(crtc));
+		if (err)
+			return err;
+		goto encoder_done;
+	}
+#endif
+
 	/* Construct an encoder for each pipeline and attach it to the remote
 	 * bridge
 	 */
@@ -663,6 +676,9 @@ static int komeda_crtc_add(struct komeda_kms_dev *kms,
 			return err;
 	}
 
+#ifdef __FreeBSD__
+encoder_done:
+#endif
 	drm_crtc_enable_color_mgmt(crtc, 0, true, KOMEDA_COLOR_LUT_SIZE);
 
 	komeda_pipeline_dump(pipe);

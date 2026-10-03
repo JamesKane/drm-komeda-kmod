@@ -25,23 +25,22 @@
  * SUCH DAMAGE.
  */
 
-/* Clocks: SCMI clocks on Sky1 (komeda_freebsd.c). */
-#ifndef _KOMEDA_FREEBSD_LINUX_CLK_H_
-#define	_KOMEDA_FREEBSD_LINUX_CLK_H_
+/* Reset lines: CIX Sky1's RST0 block, by the ACPI RSTL table (glue). */
+#ifndef _KOMEDA_FREEBSD_LINUX_RESET_H_
+#define	_KOMEDA_FREEBSD_LINUX_RESET_H_
 
 struct device;
-struct device_node;
-struct clk;
+struct reset_control;
 
-struct clk	*devm_clk_get(struct device *dev, const char *id);
-void		 devm_clk_put(struct device *dev, struct clk *clk);
-struct clk	*of_clk_get_by_name(struct device_node *np, const char *name);
-void		 clk_put(struct clk *clk);
-int		 clk_prepare_enable(struct clk *clk);
-void		 clk_disable_unprepare(struct clk *clk);
-unsigned long	 clk_get_rate(struct clk *clk);
-int		 clk_set_rate(struct clk *clk, unsigned long rate);
-long		 clk_round_rate(struct clk *clk, unsigned long rate);
-bool		 __clk_is_enabled(struct clk *clk);
+struct reset_control *devm_reset_control_get(struct device *dev,
+		    const char *id);
+int	reset_control_assert(struct reset_control *rstc);
+int	reset_control_deassert(struct reset_control *rstc);
+int	reset_control_reset(struct reset_control *rstc);
 
-#endif /* !_KOMEDA_FREEBSD_LINUX_CLK_H_ */
+#define	devm_reset_control_get_optional(dev, id)			\
+	devm_reset_control_get((dev), (id))
+#define	devm_reset_control_get_exclusive(dev, id)			\
+	devm_reset_control_get((dev), (id))
+
+#endif /* !_KOMEDA_FREEBSD_LINUX_RESET_H_ */

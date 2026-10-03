@@ -25,23 +25,20 @@
  * SUCH DAMAGE.
  */
 
-/* Clocks: SCMI clocks on Sky1 (komeda_freebsd.c). */
-#ifndef _KOMEDA_FREEBSD_LINUX_CLK_H_
-#define	_KOMEDA_FREEBSD_LINUX_CLK_H_
+/* System controllers: none under ACPI (the PHY's is optional). */
+#ifndef _KOMEDA_FREEBSD_LINUX_MFD_SYSCON_H_
+#define	_KOMEDA_FREEBSD_LINUX_MFD_SYSCON_H_
 
-struct device;
+#include <linux/err.h>
+
 struct device_node;
-struct clk;
+struct regmap;
 
-struct clk	*devm_clk_get(struct device *dev, const char *id);
-void		 devm_clk_put(struct device *dev, struct clk *clk);
-struct clk	*of_clk_get_by_name(struct device_node *np, const char *name);
-void		 clk_put(struct clk *clk);
-int		 clk_prepare_enable(struct clk *clk);
-void		 clk_disable_unprepare(struct clk *clk);
-unsigned long	 clk_get_rate(struct clk *clk);
-int		 clk_set_rate(struct clk *clk, unsigned long rate);
-long		 clk_round_rate(struct clk *clk, unsigned long rate);
-bool		 __clk_is_enabled(struct clk *clk);
+static inline struct regmap *
+syscon_regmap_lookup_by_phandle(struct device_node *np __unused,
+    const char *property __unused)
+{
+	return (ERR_PTR(-ENODEV));
+}
 
-#endif /* !_KOMEDA_FREEBSD_LINUX_CLK_H_ */
+#endif /* !_KOMEDA_FREEBSD_LINUX_MFD_SYSCON_H_ */

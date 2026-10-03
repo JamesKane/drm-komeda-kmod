@@ -45,9 +45,17 @@
 #include "trilin_phy.h"
 #include "trilin_dptx.h"
 #include "trilin_drm_mst.h"
+#ifdef __FreeBSD__
+/* The display controller is komeda's here: its CRTCs, the same shape. */
+#include "komeda_dev.h"
+#include "komeda_pipeline.h"
+#include "komeda_kms.h"
+#define	linlondp_crtc		komeda_crtc
+#else
 #include "../linlon-dp/linlondp_pipeline.h"
 #include "../linlon-dp/linlondp_dev.h"
 #include "../linlon-dp/linlondp_kms.h"
+#endif
 
 #define pipe_name(p) ((p) + 'A')
 
@@ -836,7 +844,12 @@ static int trilin_mst_encoder_atomic_check(struct drm_encoder *encoder,
 			break;
 		if (!mst_state->pbn_div.full)
 			mst_state->pbn_div =
+#ifdef __FreeBSD__	/* drm-kmod's (Linux v6.13) takes the manager */
+				drm_dp_get_vc_payload_bw(mst_mgr, dp->mode.link_rate,
+				    dp->mode.lane_cnt);
+#else
 				drm_dp_get_vc_payload_bw(dp->mode.link_rate, dp->mode.lane_cnt);
+#endif
 
 		mst_encoder->pbn = drm_dp_calc_pbn_mode(adjusted_mode->clock, conn->config.bpp << 4);
 		mst_encoder->num_slots = drm_dp_atomic_find_time_slots(state, mst_mgr, mst_port, mst_encoder->pbn);

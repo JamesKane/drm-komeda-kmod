@@ -45,9 +45,17 @@
 #include "trilin_drm.h"
 #include "trilin_drm_mst.h"
 
+#ifdef __FreeBSD__
+/* The display controller is komeda's here: its CRTCs, the same shape. */
+#include "komeda_dev.h"
+#include "komeda_pipeline.h"
+#include "komeda_kms.h"
+#define	linlondp_crtc		komeda_crtc
+#else
 #include "../linlon-dp/linlondp_pipeline.h"
 #include "../linlon-dp/linlondp_dev.h"
 #include "../linlon-dp/linlondp_kms.h"
+#endif
 
 #define ADJUST_BACKPORCH 1
 #define INVERSE_VSYNC 1
@@ -675,7 +683,7 @@ static void trilin_dp_encoder_disable(struct drm_encoder *encoder,
 	struct trilin_dp *dp = encoder_to_dp(encoder);
 	struct trilin_dp_panel *dp_panel = &dp->dp_panel;
 	struct drm_crtc *crtc;
-	struct drm_crtc_state *new_crtc_state;
+	struct drm_crtc_state *new_crtc_state = NULL;
 
 	if (!(dp->state & DP_STATE_INITIALIZED)) {
 		DP_DEBUG("[not init]");
@@ -924,7 +932,9 @@ int trilin_dp_encoder_compute_config(struct drm_encoder *encoder,
 	struct drm_display_info *info = &connector_state->connector->display_info;
 	int ret, bpc, bpp;
 	enum trilin_dpsub_format format = TRILIN_DPSUB_FORMAT_RGB;
+#ifndef __FreeBSD__
 	struct linlondp_crtc_state *kcrtc_st = to_kcrtc_st(crtc_state);
+#endif
 	int colorspace = connector_state->colorspace;
 	int color_format;// = BIT(__ffs(info->color_formats));
 	int info_formats = info->color_formats;
@@ -976,7 +986,9 @@ int trilin_dp_encoder_compute_config(struct drm_encoder *encoder,
 		break;
 	}
 
+#ifndef __FreeBSD__	/* komeda chooses from the connector's formats */
 	kcrtc_st->output_format = color_format; //Let DPU to know the format.
+#endif
 
 	if (!dp->mst.mst_active)
 		link_rate = select_link_rate(dp, adjusted_mode->clock, bpp);

@@ -1441,7 +1441,11 @@ static int cix_udphy_probe(struct platform_device *pdev)
 			id = 0;
 	udphy->id = id;
 
+#ifdef __FreeBSD__
+	udphy->cfg = &sky1_udphy_cfg;	/* the only one */
+#else
 	udphy->cfg = device_get_match_data(dev);
+#endif
 	if (!udphy->cfg) {
 		dev_err(dev, "no OF data can be matched with %p node\n", np);
 		return -EINVAL;
@@ -1476,7 +1480,12 @@ static int cix_udphy_probe(struct platform_device *pdev)
 	udphy->phy_reset = true;
 	udphy->phy_init_skip_count = 0;
 
+#ifdef __FreeBSD__
+	/* Booted with ACPI (LinuxKPI's ACPI_COMPANION() finds none). */
+	if (true) {
+#else
 	if (ACPI_COMPANION(dev)) {
+#endif
 		/*
 		 * Under ACPI, firmware initializes PHYs for UEFI USB and
 		 * display.  However, cdnsp-sky1 drd_init() resets the USB
@@ -1620,6 +1629,7 @@ static const struct of_device_id cix_udphy_dt_match[] = {
 	{ /* sentinel */ }
 };
 
+#ifdef __linux__	/* FreeBSD: the glue makes the device, by name */
 MODULE_DEVICE_TABLE(of, cix_udphy_dt_match);
 
 static const struct acpi_device_id cix_udphy_acpi_match[] = {
@@ -1628,13 +1638,16 @@ static const struct acpi_device_id cix_udphy_acpi_match[] = {
 };
 
 MODULE_DEVICE_TABLE(acpi, cix_udphy_acpi_match);
+#endif
 
 static struct platform_driver cix_udphy_driver = {
 	.probe		= cix_udphy_probe,
 	.driver		= {
 		.name	= "cix-usbdp-phy",
 		.of_match_table = cix_udphy_dt_match,
+#ifdef __linux__
 		.acpi_match_table = cix_udphy_acpi_match,
+#endif
 		.pm = NULL,
 	},
 };

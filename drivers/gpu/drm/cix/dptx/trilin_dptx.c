@@ -333,6 +333,7 @@ static int trilin_dp_update_vs_emph_phy_config(struct trilin_dp *dp)
 			 DP_TRAIN_PRE_EMPHASIS_SHIFT;
 	opts.dp.set_voltages = 1;
 
+	ret = 0;
 	if (phy->phy_ops)
 		ret = phy->phy_ops->configure(dp, &opts);
 	return ret;
@@ -2320,6 +2321,11 @@ static void trilin_dp_register_phy(struct trilin_dp *dp)
 
 	/* register phy here that need power init*/
 	if (!phy->phy_ops) {
+#ifdef __FreeBSD__
+		/* The glue follows the ACPI dp_phy reference. */
+		(void)fwnode;
+		phy->base = devm_phy_optional_get(dp->dev, "dp_phy");
+#else
 		if (has_acpi_companion(dp->dev)) {
 			fwnode = fwnode_find_reference(dp->dev->fwnode, "dp_phy", 0);
 			if (!IS_ERR(fwnode)) {
@@ -2332,6 +2338,7 @@ static void trilin_dp_register_phy(struct trilin_dp *dp)
 		} else {
 			phy->base = devm_phy_optional_get(dp->dev, "dp_phy");
 		}
+#endif
 
 		if (IS_ERR_OR_NULL(phy->base))
 			DP_WARN("no dp_phy\n");

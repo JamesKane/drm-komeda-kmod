@@ -68,6 +68,49 @@ vm_flags_mod(struct vm_area_struct *vma, unsigned long set,
 	.runtime_idle = (idle_fn),
 #endif
 
+/*
+ * ACPI: LinuxKPI's ACPI_COMPANION() finds none, so drivers take their
+ * devicetree paths, which the glue serves from ACPI; these are for the
+ * ACPI paths they still compile.
+ */
+#include <linux/property.h>
+#define	has_acpi_companion(dev)		((void)(dev), false)
+#define	acpi_dev_uid_to_integer(adev, uid)	((void)(adev), (void)(uid), -ENODEV)
+
+#include <linux/interrupt.h>
+#include <linux/workqueue.h>
+#include <linux/wait.h>
+#include <linux/platform_device.h>
+#include <sys/ioccom.h>
+#include <sys/sysctl.h>
+
+#include <linux/arm-smccc.h>
+
+#ifndef IRQF_ONESHOT
+#define	IRQF_ONESHOT		0x00002000	/* threaded handlers only */
+#endif
+#define	system_freezable_wq	system_wq	/* no suspend yet */
+#define	wake_up_interruptible_poll(wq, mask)	wake_up_interruptible(wq)
+#define	_IOC_SIZE(cmd)		IOCPARM_LEN(cmd)
+#define	_IOC_NR(cmd)		((cmd) & 0xff)
+#define	is_acpi_node(fwnode)	((void)(fwnode), false)
+#define	of_alias_get_id(np, stem)	((void)(np), (void)(stem), -ENODEV)
+
+/* Module parameters (hw.komeda, komeda_freebsd_bus.c). */
+SYSCTL_DECL(_hw_komeda);
+
+/*
+ * No ALSA: the DP transmitter's audio device is not made (it carries on
+ * without).
+ */
+static inline struct platform_device *
+platform_device_register_data(struct device *parent __unused,
+    const char *name __unused, int id __unused, const void *data __unused,
+    size_t size __unused)
+{
+	return (ERR_PTR(-ENODEV));
+}
+
 /* CIX Sky1's reset lines (drivers/reset/reset-sky1.c). */
 int		sky1_fbsd_reset_signal(unsigned long id, unsigned int *offset,
 		    unsigned int *bit);

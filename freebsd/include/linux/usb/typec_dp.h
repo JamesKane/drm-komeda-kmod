@@ -25,23 +25,22 @@
  * SUCH DAMAGE.
  */
 
-/* Clocks: SCMI clocks on Sky1 (komeda_freebsd.c). */
-#ifndef _KOMEDA_FREEBSD_LINUX_CLK_H_
-#define	_KOMEDA_FREEBSD_LINUX_CLK_H_
+/* USB Type-C DisplayPort alternate mode: the pin assignment states. */
+#ifndef _KOMEDA_FREEBSD_LINUX_USB_TYPEC_DP_H_
+#define	_KOMEDA_FREEBSD_LINUX_USB_TYPEC_DP_H_
 
-struct device;
-struct device_node;
-struct clk;
+#include <linux/usb/typec_mux.h>
 
-struct clk	*devm_clk_get(struct device *dev, const char *id);
-void		 devm_clk_put(struct device *dev, struct clk *clk);
-struct clk	*of_clk_get_by_name(struct device_node *np, const char *name);
-void		 clk_put(struct clk *clk);
-int		 clk_prepare_enable(struct clk *clk);
-void		 clk_disable_unprepare(struct clk *clk);
-unsigned long	 clk_get_rate(struct clk *clk);
-int		 clk_set_rate(struct clk *clk, unsigned long rate);
-long		 clk_round_rate(struct clk *clk, unsigned long rate);
-bool		 __clk_is_enabled(struct clk *clk);
+#define	USB_TYPEC_DP_SID	0xff01
+#define	TYPEC_ALT_MODE_DP	USB_TYPEC_DP_SID
 
-#endif /* !_KOMEDA_FREEBSD_LINUX_CLK_H_ */
+enum {
+	TYPEC_DP_STATE_A = TYPEC_STATE_MODAL,
+	TYPEC_DP_STATE_B,
+	TYPEC_DP_STATE_C,
+	TYPEC_DP_STATE_D,
+	TYPEC_DP_STATE_E,
+	TYPEC_DP_STATE_F,
+};
+
+#endif /* !_KOMEDA_FREEBSD_LINUX_USB_TYPEC_DP_H_ */

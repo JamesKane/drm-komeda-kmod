@@ -78,8 +78,8 @@
 #define	 BS_SYNC_HSP		(1u << 12)
 #define	 BS_SYNC_VSP		(1u << 28)
 
-static SYSCTL_NODE(_hw, OID_AUTO, komeda, CTLFLAG_RW | CTLFLAG_MPSAFE, 0,
-    "komeda display controllers");
+SYSCTL_NODE(_hw, OID_AUTO, komeda, CTLFLAG_RW | CTLFLAG_MPSAFE, 0,
+    "komeda display controllers and DP transmitters");
 
 static u_int komeda_fbsd_dpu_mask = 1u << 4;
 SYSCTL_UINT(_hw_komeda, OID_AUTO, dpu_mask, CTLFLAG_RDTUN,

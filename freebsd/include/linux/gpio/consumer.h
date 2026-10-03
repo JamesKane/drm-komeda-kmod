@@ -25,23 +25,36 @@
  * SUCH DAMAGE.
  */
 
-/* Clocks: SCMI clocks on Sky1 (komeda_freebsd.c). */
-#ifndef _KOMEDA_FREEBSD_LINUX_CLK_H_
-#define	_KOMEDA_FREEBSD_LINUX_CLK_H_
+/* GPIOs: none yet (the eDP panel's); every lookup finds none. */
+#ifndef _KOMEDA_FREEBSD_LINUX_GPIO_CONSUMER_H_
+#define	_KOMEDA_FREEBSD_LINUX_GPIO_CONSUMER_H_
 
 struct device;
-struct device_node;
-struct clk;
+struct gpio_desc;
 
-struct clk	*devm_clk_get(struct device *dev, const char *id);
-void		 devm_clk_put(struct device *dev, struct clk *clk);
-struct clk	*of_clk_get_by_name(struct device_node *np, const char *name);
-void		 clk_put(struct clk *clk);
-int		 clk_prepare_enable(struct clk *clk);
-void		 clk_disable_unprepare(struct clk *clk);
-unsigned long	 clk_get_rate(struct clk *clk);
-int		 clk_set_rate(struct clk *clk, unsigned long rate);
-long		 clk_round_rate(struct clk *clk, unsigned long rate);
-bool		 __clk_is_enabled(struct clk *clk);
+enum gpiod_flags {
+	GPIOD_ASIS,
+	GPIOD_IN,
+	GPIOD_OUT_LOW,
+	GPIOD_OUT_HIGH,
+};
 
-#endif /* !_KOMEDA_FREEBSD_LINUX_CLK_H_ */
+static inline struct gpio_desc *
+devm_gpiod_get_optional(struct device *dev __unused, const char *con_id __unused,
+    enum gpiod_flags flags __unused)
+{
+	return (NULL);
+}
+
+static inline int
+gpiod_get_value_cansleep(const struct gpio_desc *desc __unused)
+{
+	return (0);
+}
+
+static inline void
+gpiod_set_value_cansleep(struct gpio_desc *desc __unused, int value __unused)
+{
+}
+
+#endif /* !_KOMEDA_FREEBSD_LINUX_GPIO_CONSUMER_H_ */

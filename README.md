@@ -10,8 +10,9 @@ transmitters and USB-C/DP combo PHYs.
 - `drivers/gpu/drm/arm/display/`: komeda from Linux v6.13, the release
   drm-kmod's DRM core follows, with Linux v7.1's Linlon-D6 support
   (8fd7576fd6d8, Cunyuan Liu).  GPL-2.0.
-- `drivers/gpu/drm/`, `include/drm/`: Linux v6.13's GEM DMA, fb-DMA and
-  simple-KMS helpers, which drm-kmod does not build.  GPL-2.0, MIT.
+- `drivers/gpu/drm/`, `include/drm/`: Linux v6.13's GEM DMA, fb-DMA,
+  fbdev-DMA and simple-KMS helpers, which drm-kmod does not build.
+  GPL-2.0, MIT.
 - `drivers/gpu/drm/cix/dptx/`, `drivers/phy/cix/`: CIX's Trilinear DP
   transmitter and USB-C/DP PHY drivers, from
   [Sky1-Linux/linux-sky1](https://github.com/Sky1-Linux/linux-sky1)'s
@@ -62,7 +63,9 @@ transmitter (DP04) and its USB-C/DP PHY (UCP3): the transmitter detects
 the monitor, trains the link and sets modes.  On the Orange Pi 6 Plus
 this is the HDMI port, behind a Parade PS185 DP-to-HDMI converter,
 through which the monitor's EDID does not read (on Linux either): the
-modes are the standard ones up to 1920x1080, at 8 bpc.  sway runs on it,
+modes are the standard ones up to 1920x1080, at 8 bpc or more.  The
+console (vt(4), through DRM's fbdev emulation) moves onto it when komeda
+loads, and comes back when a compositor exits.  sway runs on it,
 rendering with panthor into buffers komeda scans out directly.  komeda
 keeps the controller as the firmware left it (a reset drops the DP link
 for good).

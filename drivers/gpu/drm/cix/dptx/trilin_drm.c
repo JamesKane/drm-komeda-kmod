@@ -59,7 +59,15 @@
 
 #define ADJUST_BACKPORCH 1
 #define INVERSE_VSYNC 1
+#ifdef __FreeBSD__
+/*
+ * Each read retries itself; fifty more cost five seconds a probe where no
+ * EDID comes (behind the Orange Pi 6 Plus's DP-to-HDMI converter).
+ */
+#define GET_EDID_RETRY_MAX 2
+#else
 #define GET_EDID_RETRY_MAX 50
+#endif
 /*adjust vfp: 1 is kernel and 0 is user*/
 #define VRR_ADJUST_VFP_FROM_KERNEL 0
 

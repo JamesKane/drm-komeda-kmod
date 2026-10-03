@@ -134,6 +134,7 @@ platform_device_register_data(struct device *parent __unused,
 /* CIX Sky1's DP transmitters (sky1_dp_freebsd.c). */
 struct drm_device;
 bool	sky1_dp_fbsd_have_dptx(void);
+bool	sky1_dp_fbsd_dptx_ready(void);
 int	sky1_dp_fbsd_dptx_bind(struct drm_device *drm, uint32_t possible_crtcs);
 
 /* CIX Sky1's reset lines (drivers/reset/reset-sky1.c). */

@@ -493,6 +493,27 @@ struct trilin_dp {
 // DEBUG
 //------------------------------------------------------------------------------
 #define DRM_UT_KMS 1
+#ifdef __FreeBSD__
+/*
+ * FreeBSD's printf ends no line itself, and many of these messages leave
+ * the newline out: through the glue, a line each.
+ */
+void sky1_dp_fbsd_log(const struct device *dev, const char *tag,
+		      const char *func, const char *fmt, ...) __printflike(4, 5);
+
+#define DP_DEBUG(fmt, ...)						\
+	do {								\
+		if (__drm_debug & DRM_UT_ATOMIC)			\
+			sky1_dp_fbsd_log(dp->dev, "debug", __func__,	\
+					 fmt, ##__VA_ARGS__);		\
+	} while (0)
+#define DP_INFO(fmt, ...)						\
+	sky1_dp_fbsd_log(dp->dev, "info", __func__, fmt, ##__VA_ARGS__)
+#define DP_WARN(fmt, ...)						\
+	sky1_dp_fbsd_log(dp->dev, "warn", __func__, fmt, ##__VA_ARGS__)
+#define DP_ERR(fmt, ...)						\
+	sky1_dp_fbsd_log(dp->dev, "ERROR", __func__, fmt, ##__VA_ARGS__)
+#else
 #define DP_DEBUG(fmt, ...)										\
 	do {                                                              \
 		if (DRM_UT_KMS)                                           \
@@ -510,6 +531,7 @@ struct trilin_dp {
 
 #define DP_ERR(fmt, ...) \
 	dev_err(dp->dev, "[drm:%s][ERROR]" fmt, __func__, ##__VA_ARGS__)
+#endif /* __FreeBSD__ */
 
 #define DP_MST_DEBUG(fmt, ...)									\
 	do {                                                              \

@@ -511,6 +511,27 @@ phy_validate(struct phy *phy, enum phy_mode mode, int submode,
 	return (error);
 }
 
+/* The transmitter's messages (DP_INFO() &c.), a line each. */
+void
+sky1_dp_fbsd_log(const struct device *dev, const char *tag, const char *func,
+    const char *fmt, ...)
+{
+	char buf[256];
+	va_list ap;
+	size_t n;
+
+	va_start(ap, fmt);
+	vsnprintf(buf, sizeof(buf), fmt, ap);
+	va_end(ap);
+	n = strlen(buf);
+	while (n > 0 && buf[n - 1] == '\n')
+		buf[--n] = '\0';
+	if (dev != NULL && dev->bsddev != NULL)
+		device_printf(dev->bsddev, "[drm:%s][%s] %s\n", func, tag, buf);
+	else
+		printf("[drm:%s][%s] %s\n", func, tag, buf);
+}
+
 /* No DP audio (no ALSA): no audio infoframe either. */
 ssize_t
 hdmi_audio_infoframe_pack_for_dp(const struct hdmi_audio_infoframe *frame
@@ -567,6 +588,31 @@ sky1_dp_fbsd_dptx_bind(struct drm_device *drm, uint32_t possible_crtcs)
 	dpsub->dp->encoder.base.possible_crtcs = possible_crtcs;
 	d->dpsub = dpsub;
 	return (0);
+}
+
+/*
+ * Whether a transmitter, if any, can be bound: its PHY, if it names one, is
+ * registered (the PHY driver may register after komeda's).
+ */
+bool
+sky1_dp_fbsd_dptx_ready(void)
+{
+	struct sky1_dp_fbsd_dev *d;
+	bool ready = true;
+
+	mutex_lock(&sky1_dp_fbsd_lock);
+	list_for_each_entry(d, &sky1_dp_fbsd_devs, link) {
+		if (strcmp(d->info.driver, "trilin-dptx") != 0 ||
+		    d->info.dp_phy_dev == NULL)
+			continue;
+		mutex_unlock(&sky1_dp_fbsd_lock);
+		ready = sky1_dp_fbsd_phy_find(d->info.dp_phy_dev,
+		    d->info.dp_phy_child) != NULL;
+		mutex_lock(&sky1_dp_fbsd_lock);
+		break;
+	}
+	mutex_unlock(&sky1_dp_fbsd_lock);
+	return (ready);
 }
 
 /* Whether a transmitter is there to bind. */

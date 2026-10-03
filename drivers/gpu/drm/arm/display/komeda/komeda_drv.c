@@ -59,6 +59,12 @@ static int komeda_platform_probe(struct platform_device *pdev)
 	struct komeda_drv *mdrv;
 	int err;
 
+#ifdef __FreeBSD__
+	/* Not before the DP transmitter can be bound (its PHY is there). */
+	if (!sky1_dp_fbsd_dptx_ready())
+		return -EPROBE_DEFER;
+#endif
+
 	err = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(40));
 	if (err)
 		return dev_err_probe(dev, err, "DMA mask error\n");

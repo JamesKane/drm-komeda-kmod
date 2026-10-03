@@ -364,6 +364,18 @@ static int d71_enum_resources(struct komeda_dev *mdev)
 	d71->gcu_addr = mdev->reg_base;
 	d71->periph_addr = mdev->reg_base + (D71_BLOCK_OFFSET_PERIPH >> 2);
 
+#ifdef __FreeBSD__
+	/*
+	 * A controller the firmware left displaying is not reset: its stream
+	 * goes on until the first modeset reprograms it, so the DP
+	 * transmitter, which has no driver yet, keeps its link.
+	 */
+	if (GCU_CONTROL_MODE(malidp_read32(d71->gcu_addr, BLK_CONTROL)) !=
+	    INACTIVE_MODE) {
+		DRM_INFO("left the firmware's display running.\n");
+		err = 0;
+	} else
+#endif
 	err = d71_reset(d71);
 	if (err) {
 		DRM_ERROR("Fail to reset d71 device.\n");

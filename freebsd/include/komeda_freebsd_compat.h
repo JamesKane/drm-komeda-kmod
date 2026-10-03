@@ -56,6 +56,12 @@ vm_flags_mod(struct vm_area_struct *vma, unsigned long set,
 	vma->vm_flags = (vma->vm_flags | set) & ~clear;
 }
 
+/*
+ * komeda's output bridge comes from the glue, also in the files that do not
+ * include <drm/drm_of.h>: <drm/drm_bridge.h>'s inline one fails.
+ */
+#include <drm/drm_of.h>
+
 #ifndef SET_RUNTIME_PM_OPS
 #define	SET_RUNTIME_PM_OPS(suspend_fn, resume_fn, idle_fn)		\
 	.runtime_suspend = (suspend_fn), .runtime_resume = (resume_fn),	\

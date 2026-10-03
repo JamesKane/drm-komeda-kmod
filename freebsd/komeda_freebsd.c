@@ -69,7 +69,6 @@ const struct komeda_dev_funcs *d71_identify(u32 __iomem *reg,
 
 static struct komeda_fbsd_info komeda_fbsd_info;
 static struct platform_device *komeda_fbsd_pdev;
-static bool komeda_fbsd_pm_held;
 
 /* Devicetree */
 
@@ -356,6 +355,23 @@ komeda_fbsd_of_get_bridge(struct device *dev, struct device_node *np, u32 port,
  * snoop CPU caches.  Its DMA address is its physical address (no IOMMU).
  */
 
+/*
+ * Every mapping of the pages: the pages' own attribute, which user mappings
+ * (LinuxKPI's, through the scatter/gather pager) and the direct map take,
+ * and the kernel mapping dma_alloc_coherent() made.
+ */
+static int
+komeda_fbsd_dma_set_memattr(void *va, dma_addr_t dma_handle, size_t size,
+    vm_memattr_t ma)
+{
+	vm_paddr_t pa;
+
+	for (pa = dma_handle; pa < dma_handle + round_page(size);
+	    pa += PAGE_SIZE)
+		pmap_page_set_memattr(PHYS_TO_VM_PAGE(pa), ma);
+	return (pmap_change_attr(va, round_page(size), ma));
+}
+
 void *
 komeda_fbsd_dma_alloc_wc(struct device *dev, size_t size,
     dma_addr_t *dma_handle, gfp_t gfp)
@@ -363,8 +379,10 @@ komeda_fbsd_dma_alloc_wc(struct device *dev, size_t size,
 	void *va;
 
 	va = dma_alloc_coherent(dev, size, dma_handle, gfp);
-	if (va != NULL && pmap_change_attr(va, round_page(size),
+	if (va != NULL && komeda_fbsd_dma_set_memattr(va, *dma_handle, size,
 	    VM_MEMATTR_WRITE_COMBINING) != 0) {
+		(void)komeda_fbsd_dma_set_memattr(va, *dma_handle, size,
+		    VM_MEMATTR_DEFAULT);
 		dma_free_coherent(dev, size, va, *dma_handle);
 		va = NULL;
 	}
@@ -375,7 +393,7 @@ void
 komeda_fbsd_dma_free_wc(struct device *dev, size_t size, void *va,
     dma_addr_t dma_handle)
 {
-	(void)pmap_change_attr(va, round_page(size),
+	(void)komeda_fbsd_dma_set_memattr(va, dma_handle, size,
 	    VM_MEMATTR_DEFAULT);
 	dma_free_coherent(dev, size, va, dma_handle);
 }
@@ -442,34 +460,33 @@ komeda_fbsd_linux_attach(device_t dev, const struct komeda_fbsd_info *info)
 		return (error);
 	}
 	komeda_fbsd_pdev = pdev;
-
-	/* Keep the controller resumed, as its clocks are kept on. */
-	if (platform_get_drvdata(pdev) != NULL &&
-	    pm_runtime_resume_and_get(&pdev->dev) == 0)
-		komeda_fbsd_pm_held = true;
-	return (platform_get_drvdata(pdev) != NULL ? 0 : -ENXIO);
+	/*
+	 * komeda probes it when its driver registers, after this attach
+	 * when the module is loaded (LinuxKPI's module_init() runs at
+	 * SI_SUB_OFED_MODINIT).
+	 */
+	return (0);
 }
 
 void
 komeda_fbsd_linux_detach(void)
 {
 	linux_set_current(curthread);
-	if (komeda_fbsd_pm_held)
-		pm_runtime_put(&komeda_fbsd_pdev->dev);
-	komeda_fbsd_pm_held = false;
 	if (komeda_fbsd_pdev != NULL)
 		platform_device_unregister(komeda_fbsd_pdev);
 	komeda_fbsd_pdev = NULL;
 }
 
 /*
- * Whether komeda may not be detached.  The DRM device is komeda's, behind
- * its driver data, so until it can be asked whether anything has it open,
- * komeda stays once attached: unloading under an open file, or while the
- * controller scans a buffer out, would call into a freed module.
+ * Whether komeda may not be detached: once it has probed (its driver data
+ * set).  The DRM device is komeda's, behind that driver data, so until it
+ * can be asked whether anything has it open, komeda stays: unloading under
+ * an open file, or while the controller scans a buffer out, would call
+ * into a freed module.
  */
 bool
 komeda_fbsd_linux_busy(void)
 {
-	return (komeda_fbsd_pdev != NULL);
+	return (komeda_fbsd_pdev != NULL &&
+	    platform_get_drvdata(komeda_fbsd_pdev) != NULL);
 }

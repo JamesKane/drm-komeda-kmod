@@ -519,36 +519,6 @@ EXPORT_SYMBOL_GPL(drm_gem_dma_vmap);
  * Returns:
  * 0 on success or a negative error code on failure.
  */
-#ifdef __FreeBSD__
-/*
- * LinuxKPI maps through a fault handler.  The buffer is contiguous: a page
- * is found from its DMA address, its physical address (no IOMMU).
- */
-static vm_fault_t drm_gem_dma_fbsd_fault(struct vm_fault *vmf)
-{
-	struct vm_area_struct *vma = vmf->vma;
-	struct drm_gem_object *obj = vma->vm_private_data;
-	struct drm_gem_dma_object *dma_obj = to_drm_gem_dma_obj(obj);
-	pgoff_t pgoff = vmf->pgoff - vma->vm_pgoff;
-	vm_fault_t ret;
-
-	if (pgoff >= obj->size >> PAGE_SHIFT)
-		return VM_FAULT_SIGBUS;
-
-	/* LinuxKPI's insert wants the VM object locked. */
-	VM_OBJECT_WLOCK(vma->vm_obj);
-	ret = lkpi_vmf_insert_pfn_prot_locked(vma, vmf->address,
-	    (dma_obj->dma_addr >> PAGE_SHIFT) + pgoff, vma->vm_page_prot);
-	VM_OBJECT_WUNLOCK(vma->vm_obj);
-	return ret;
-}
-
-static const struct vm_operations_struct drm_gem_dma_fbsd_vm_ops = {
-	.fault = drm_gem_dma_fbsd_fault,
-	.open = drm_gem_vm_open,
-	.close = drm_gem_vm_close,
-};
-#endif
 
 int drm_gem_dma_mmap(struct drm_gem_dma_object *dma_obj, struct vm_area_struct *vma)
 {
@@ -564,11 +534,18 @@ int drm_gem_dma_mmap(struct drm_gem_dma_object *dma_obj, struct vm_area_struct *
 	vm_flags_mod(vma, VM_DONTEXPAND, VM_PFNMAP);
 
 #ifdef __FreeBSD__
-	vma->vm_page_prot = vm_get_page_prot(vma->vm_flags);
-	if (!dma_obj->map_noncoherent)
-		vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
-	vma->vm_ops = &drm_gem_dma_fbsd_vm_ops;
-	ret = 0;
+	/*
+	 * The buffer is contiguous, at its DMA (physical) address: LinuxKPI
+	 * maps such a range directly when the area has no operations.  With no
+	 * close operation, the reference drm_gem_mmap() took is not dropped:
+	 * the buffer stays as long as the module, rather than going while
+	 * mapped.
+	 */
+	vma->vm_ops = NULL;
+	ret = io_remap_pfn_range(vma, vma->vm_start,
+	    dma_obj->dma_addr >> PAGE_SHIFT, vma->vm_end - vma->vm_start,
+	    dma_obj->map_noncoherent ? vm_get_page_prot(vma->vm_flags) :
+	    pgprot_writecombine(vm_get_page_prot(vma->vm_flags)));
 #else
 	if (dma_obj->map_noncoherent) {
 		vma->vm_page_prot = vm_get_page_prot(vma->vm_flags);

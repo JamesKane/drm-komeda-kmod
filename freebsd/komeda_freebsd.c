@@ -375,7 +375,8 @@ komeda_fbsd_of_get_bridge(struct device *dev, struct device_node *np, u32 port,
 
 /*
  * DMA: contiguous memory, mapped write-combined, as the controller does not
- * snoop CPU caches.  Its DMA address is its physical address (no IOMMU).
+ * snoop CPU caches.  Its DMA address is the device's (through an IOMMU, not
+ * the physical address): the pages are found from the kernel mapping.
  */
 
 /*
@@ -384,14 +385,13 @@ komeda_fbsd_of_get_bridge(struct device *dev, struct device_node *np, u32 port,
  * and the kernel mapping dma_alloc_coherent() made.
  */
 static int
-komeda_fbsd_dma_set_memattr(void *va, dma_addr_t dma_handle, size_t size,
-    vm_memattr_t ma)
+komeda_fbsd_dma_set_memattr(void *va, size_t size, vm_memattr_t ma)
 {
-	vm_paddr_t pa;
+	vm_offset_t off;
 
-	for (pa = dma_handle; pa < dma_handle + round_page(size);
-	    pa += PAGE_SIZE)
-		pmap_page_set_memattr(PHYS_TO_VM_PAGE(pa), ma);
+	for (off = 0; off < round_page(size); off += PAGE_SIZE)
+		pmap_page_set_memattr(PHYS_TO_VM_PAGE(
+		    pmap_kextract((vm_offset_t)va + off)), ma);
 	return (pmap_change_attr(va, round_page(size), ma));
 }
 
@@ -402,9 +402,9 @@ komeda_fbsd_dma_alloc_wc(struct device *dev, size_t size,
 	void *va;
 
 	va = dma_alloc_coherent(dev, size, dma_handle, gfp);
-	if (va != NULL && komeda_fbsd_dma_set_memattr(va, *dma_handle, size,
+	if (va != NULL && komeda_fbsd_dma_set_memattr(va, size,
 	    VM_MEMATTR_WRITE_COMBINING) != 0) {
-		(void)komeda_fbsd_dma_set_memattr(va, *dma_handle, size,
+		(void)komeda_fbsd_dma_set_memattr(va, size,
 		    VM_MEMATTR_DEFAULT);
 		dma_free_coherent(dev, size, va, *dma_handle);
 		va = NULL;
@@ -416,21 +416,22 @@ void
 komeda_fbsd_dma_free_wc(struct device *dev, size_t size, void *va,
     dma_addr_t dma_handle)
 {
-	(void)komeda_fbsd_dma_set_memattr(va, dma_handle, size,
+	(void)komeda_fbsd_dma_set_memattr(va, size,
 	    VM_MEMATTR_DEFAULT);
 	dma_free_coherent(dev, size, va, dma_handle);
 }
 
 int
 komeda_fbsd_dma_get_sgtable(struct device *dev __unused, struct sg_table *sgt,
-    void *va __unused, dma_addr_t dma_handle, size_t size)
+    void *va, dma_addr_t dma_handle __unused, size_t size)
 {
 	int error;
 
 	error = sg_alloc_table(sgt, 1, GFP_KERNEL);
 	if (error != 0)
 		return (error);
-	sg_set_page(sgt->sgl, pfn_to_page(dma_handle >> PAGE_SHIFT),
+	/* Contiguous: one entry, from the first page. */
+	sg_set_page(sgt->sgl, PHYS_TO_VM_PAGE(pmap_kextract((vm_offset_t)va)),
 	    round_page(size), 0);
 	return (0);
 }
